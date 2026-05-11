@@ -4,19 +4,75 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Send, Upload, BookOpen, MessageSquare } from 'lucide-react';
+import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus } from 'lucide-react';
 import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge'>('chat');
 
   useEffect(() => {
-    if (auth.currentUser) {
+    return onAuthStateChanged(auth, setUser);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
       const q = query(
-        collection(db, 'users', auth.currentUser.uid, 'chat'),
+        collection(db, 'users', user.uid, 'chat'),
         orderBy('createdAt')
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -25,35 +81,73 @@ export default function App() {
           content: doc.data().content
         }));
         setMessages(loadedMessages);
-      });
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'chat'));
       return () => unsubscribe();
+    } else {
+      setMessages([]);
     }
-  }, []);
+  }, [user]);
 
+  const handleAuth = async () => {
+    try {
+        if (isLogin) {
+            await signInWithEmailAndPassword(auth, email, password);
+        } else {
+            await createUserWithEmailAndPassword(auth, email, password);
+        }
+    } catch (e) {
+        alert(e instanceof Error ? e.message : 'Auth error');
+    }
+  };
+
+  if (!user) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-gray-50 p-4">
+            <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+                <h1 className="text-2xl font-bold text-center">{isLogin ? 'Sign In' : 'Sign Up'}</h1>
+                <input className="px-4 py-3 rounded-xl border" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+                <input className="px-4 py-3 rounded-xl border" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+                <button className="px-4 py-3 bg-black text-white rounded-xl font-medium" onClick={handleAuth}>{isLogin ? 'Sign In' : 'Sign Up'}</button>
+                <button className="text-sm text-gray-500 underline text-center" onClick={() => setIsLogin(!isLogin)}>{isLogin ? 'Need an account? Sign up' : 'Have an account? Sign in'}</button>
+            </div>
+        </div>
+      );
+  }
+  
   const sendMessage = async () => {
-    if (!input.trim() || !auth.currentUser) return;
+    if (!input.trim() || !user) return;
     
-    // Save user message to Firestore
-    await addDoc(collection(db, 'users', auth.currentUser.uid, 'chat'), {
-       role: 'user',
-       content: input,
-       createdAt: new Date().toISOString()
-    });
+    try {
+        await addDoc(collection(db, 'users', user.uid, 'chat'), {
+           role: 'user',
+           content: input,
+           createdAt: new Date().toISOString()
+        });
+    } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, 'chat');
+    }
     
     setInput('');
 
     // Fetch knowledge base (unchanged part)
     let knowledgeContext = "";
-    if (auth.currentUser) {
-        const querySnapshot = await getDocs(collection(db, 'users', auth.currentUser.uid, 'knowledge'));
-        querySnapshot.forEach((doc) => {
-            knowledgeContext += `\nDocument: ${doc.data().filename}\nContent:\n${doc.data().content}\n`;
-        });
+    if (user) {
+        let querySnapshot;
+        try {
+            querySnapshot = await getDocs(collection(db, 'users', user.uid, 'knowledge'));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.GET, 'knowledge');
+        }
+        if (querySnapshot) {
+            querySnapshot.forEach((doc) => {
+                knowledgeContext += `\nDocument: ${doc.data().filename}\nContent:\n${doc.data().content}\n`;
+            });
+        }
     }
 
     // Build context
     const messagesWithContext = [
-        { role: 'system', content: "Use the following knowledge base if relevant: " + knowledgeContext },
+        { role: 'system', content: "Use the following knowledge base if relevant: " + knowledgeContext + " | Context context: aiprogectkorzh1" },
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: input }
     ];
@@ -69,11 +163,15 @@ export default function App() {
         
         if (data.choices && data.choices.length > 0) {
             // Save AI response to Firestore
-            await addDoc(collection(db, 'users', auth.currentUser.uid, 'chat'), {
-               role: 'assistant',
-               content: data.choices[0].message.content,
-               createdAt: new Date().toISOString()
-            });
+            try {
+                await addDoc(collection(db, 'users', user.uid, 'chat'), {
+                   role: 'assistant',
+                   content: data.choices[0].message.content,
+                   createdAt: new Date().toISOString()
+                });
+            } catch (error) {
+                handleFirestoreError(error, OperationType.CREATE, 'chat');
+            }
         } else if(data.error) {
             console.error(data.error);
         }
@@ -143,17 +241,16 @@ export default function App() {
                     const reader = new FileReader();
                     reader.onload = async (e) => {
                         const content = e.target?.result as string;
-                        if(auth.currentUser) {
+                        if(user) {
                            try {
-                             await addDoc(collection(db, 'users', auth.currentUser.uid, 'knowledge'), {
+                             await addDoc(collection(db, 'users', user.uid, 'knowledge'), {
                                filename: file.name,
                                content: content,
                                createdAt: new Date().toISOString()
                              });
                              alert(`Successfully saved ${file.name}`);
                            } catch (err) {
-                             console.error("Error saving to Firestore:", err);
-                             alert("Failed to save to database.");
+                             handleFirestoreError(err, OperationType.CREATE, 'knowledge');
                            }
                         } else {
                             alert("Please sign in to upload files.");

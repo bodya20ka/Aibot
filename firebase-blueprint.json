@@ -1,37 +1,36 @@
 {
   "entities": {
-    "user": {
-      "title": "User",
-      "description": "User profile data",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "displayName": { "type": "string" },
-        "email": { "type": "string" }
-      },
-      "required": ["userId", "displayName", "email"]
-    },
-    "chatMessage": {
+    "ChatMessage": {
       "title": "Chat Message",
-      "description": "A message in a chat history",
+      "description": "Represents a message in the chat.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "role": { "type": "string", "enum": ["user", "assistant"] },
+        "role": { "type": "string" },
         "content": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string" }
       },
-      "required": ["userId", "role", "content", "createdAt"]
+      "required": ["role", "content", "createdAt"]
+    },
+    "KnowledgeDocument": {
+      "title": "Knowledge Document",
+      "description": "Represents a document in the user's knowledge base.",
+      "type": "object",
+      "properties": {
+        "filename": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["filename", "content", "createdAt"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "user",
-      "description": "User profile documents"
+    "/users/{userId}/chat/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "User's chat history."
     },
-    "/users/{userId}/chats/{chatId}": {
-      "schema": "chatMessage",
-      "description": "Chat messages for a user"
+    "/users/{userId}/knowledge/{docId}": {
+      "schema": "KnowledgeDocument",
+      "description": "User's knowledge base documents."
     }
   }
 }
