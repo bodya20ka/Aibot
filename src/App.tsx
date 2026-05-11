@@ -147,7 +147,7 @@ export default function App() {
 
     // Build context
     const messagesWithContext = [
-        { role: 'system', content: "Use the following knowledge base if relevant: " + knowledgeContext + " | Context context: aiprogectkorzh1" },
+        { role: 'system', content: "You have access to a long-term memory database managed in Firebase (Firestore, both chat history and uploaded documents). Use this information to maintain continuity and provide personalized answers based on previous interactions and documents. Use the following knowledge base if relevant: " + knowledgeContext + " | Context context: aiprogectkorzh1" },
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: input }
     ];
