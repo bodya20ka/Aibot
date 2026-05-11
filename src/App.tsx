@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus, Copy, Database } from 'lucide-react';
+import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus, Copy, Database, Trash2 } from 'lucide-react';
 import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
@@ -237,8 +237,11 @@ export default function App() {
               ))}
             </div>
 
-            <div className="sticky bottom-0 pt-2">
-              <div className="flex bg-white rounded-full p-1 shadow-md border border-gray-100">
+            <div className="sticky bottom-0 pt-2 flex items-center gap-2">
+              <button onClick={() => setMessages([])} className="p-3 text-gray-400 hover:text-black">
+                <Trash2 size={20} />
+              </button>
+              <div className="flex bg-white rounded-full p-1 shadow-md border border-gray-100 flex-1">
                 <input
                   className="flex-1 px-4 py-3 bg-transparent outline-none"
                   placeholder="Talk to your assistant..."
