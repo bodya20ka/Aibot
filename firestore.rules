@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow user to read/write their own profile
+      allow get, update, delete: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      
+      // Chats subcollection
+      match /chats/{chatId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Knowledge subcollection
+      match /knowledge/{knowledgeId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
