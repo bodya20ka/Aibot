@@ -3,25 +3,46 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Upload, BookOpen, MessageSquare } from 'lucide-react';
 import { db, auth } from './firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge'>('chat');
 
+  useEffect(() => {
+    if (auth.currentUser) {
+      const q = query(
+        collection(db, 'users', auth.currentUser.uid, 'chat'),
+        orderBy('createdAt')
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const loadedMessages = snapshot.docs.map(doc => ({
+          role: doc.data().role,
+          content: doc.data().content
+        }));
+        setMessages(loadedMessages);
+      });
+      return () => unsubscribe();
+    }
+  }, []);
+
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !auth.currentUser) return;
     
-    // Add user message
-    const newMessages = [...messages, { role: 'user', content: input }];
-    setMessages(newMessages);
+    // Save user message to Firestore
+    await addDoc(collection(db, 'users', auth.currentUser.uid, 'chat'), {
+       role: 'user',
+       content: input,
+       createdAt: new Date().toISOString()
+    });
+    
     setInput('');
 
-    // Fetch knowledge base
+    // Fetch knowledge base (unchanged part)
     let knowledgeContext = "";
     if (auth.currentUser) {
         const querySnapshot = await getDocs(collection(db, 'users', auth.currentUser.uid, 'knowledge'));
@@ -33,7 +54,8 @@ export default function App() {
     // Build context
     const messagesWithContext = [
         { role: 'system', content: "Use the following knowledge base if relevant: " + knowledgeContext },
-        ...newMessages.map(m => ({ role: m.role, content: m.content }))
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+        { role: 'user', content: input }
     ];
 
     // Fetch from backend
@@ -46,13 +68,17 @@ export default function App() {
         const data = await res.json();
         
         if (data.choices && data.choices.length > 0) {
-            setMessages([...newMessages, { role: 'assistant', content: data.choices[0].message.content }]);
+            // Save AI response to Firestore
+            await addDoc(collection(db, 'users', auth.currentUser.uid, 'chat'), {
+               role: 'assistant',
+               content: data.choices[0].message.content,
+               createdAt: new Date().toISOString()
+            });
         } else if(data.error) {
-            setMessages([...newMessages, { role: 'assistant', content: `Error: ${data.error}${data.details ? ' - ' + data.details : ''}` }]);
+            console.error(data.error);
         }
     } catch (e) {
         console.error(e);
-        setMessages([...newMessages, { role: 'assistant', content: 'Connection error' }]);
     }
   };
 
