@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus, Copy, Database, Trash2 } from 'lucide-react';
 import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -69,10 +69,16 @@ export default function App() {
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge'>('chat');
   const [manualKnowledge, setManualKnowledge] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
   }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isThinking]);
 
   useEffect(() => {
     if (user) {
@@ -122,6 +128,7 @@ export default function App() {
   const sendMessage = async () => {
     if (!input.trim() || !user) return;
     
+    setIsThinking(true);
     try {
         await addDoc(collection(db, 'users', user.uid, 'chat'), {
            role: 'user',
@@ -182,6 +189,8 @@ export default function App() {
         }
     } catch (e) {
         console.error(e);
+    } finally {
+        setIsThinking(false);
     }
   };
 
@@ -235,6 +244,14 @@ export default function App() {
                   )}
                 </div>
               ))}
+              {isThinking && (
+                  <div className="flex justify-start">
+                    <div className="px-4 py-2 rounded-2xl bg-white shadow-sm text-gray-400">
+                        Thinking...
+                    </div>
+                  </div>
+              )}
+              <div ref={scrollRef} />
             </div>
 
             <div className="sticky bottom-0 pt-2 flex items-center gap-2">
