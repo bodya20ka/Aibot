@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus } from 'lucide-react';
+import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus, Copy, Database } from 'lucide-react';
 import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
@@ -180,6 +180,20 @@ export default function App() {
     }
   };
 
+  const saveToKnowledge = async (content: string) => {
+    if (!user) return;
+    try {
+        await addDoc(collection(db, 'users', user.uid, 'knowledge'), {
+           filename: "Saved from chat " + new Date().toLocaleString(),
+           content: content,
+           createdAt: new Date().toISOString()
+        });
+        alert("Saved to knowledge base.");
+    } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, 'knowledge');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
       <nav className="w-16 bg-white border-r flex flex-col items-center py-6 gap-6">
@@ -200,10 +214,20 @@ export default function App() {
             
             <div className="flex-1 overflow-y-auto space-y-4 py-4">
               {messages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
                   <div className={`px-4 py-2 rounded-2xl max-w-[80%] ${m.role === 'user' ? 'bg-black text-white' : 'bg-white shadow-sm'}`}>
                     {m.content}
                   </div>
+                  {m.role === 'assistant' && (
+                    <div className="flex gap-2">
+                        <button onClick={() => navigator.clipboard.writeText(m.content)} className="p-1 text-gray-400 hover:text-black">
+                        <Copy size={16} />
+                        </button>
+                        <button onClick={() => saveToKnowledge(m.content)} className="p-1 text-gray-400 hover:text-black">
+                        <Database size={16} />
+                        </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
