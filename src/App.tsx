@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus, Copy, Database, Trash2, Brain, Volume2 } from 'lucide-react';
 import { db, auth } from './firebase';
-import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -146,14 +146,27 @@ export default function App() {
     if (user) {
         let querySnapshot;
         try {
-            querySnapshot = await getDocs(collection(db, 'users', user.uid, 'knowledge'));
+            querySnapshot = await getDocs(
+                query(                
+                    collection(db, 'users', user.uid, 'knowledge'),
+                    orderBy('createdAt', 'desc'),
+                    limit(10)
+                )
+            );
         } catch (error) {
             handleFirestoreError(error, OperationType.GET, 'knowledge');
         }
         if (querySnapshot) {
             querySnapshot.forEach((doc) => {
-                knowledgeContext += `\nDocument: ${doc.data().filename}\nContent:\n${doc.data().content}\n`;
+                // Limit individual document content to avoid massive accumulation
+                const content = doc.data().content || "";
+                const truncatedContent = content.length > 1000 ? content.substring(0, 1000) + "... (truncated)" : content;
+                knowledgeContext += `\nDocument: ${doc.data().filename}\nContent:\n${truncatedContent}\n`;
             });
+            // Final cap for entire knowledge context
+            if (knowledgeContext.length > 5000) {
+                knowledgeContext = knowledgeContext.substring(0, 5000) + "... (total context truncated)";
+            }
         }
     }
 
