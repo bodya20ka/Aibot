@@ -3,10 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Send, Upload, BookOpen, MessageSquare } from 'lucide-react';
 import { db, auth } from './firebase';
-import { collection, addDoc, query, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -36,19 +39,20 @@ export default function App() {
         ...newMessages.map(m => ({ role: m.role, content: m.content }))
     ];
 
-    // Fetch from backend
+    // Fetch from Gemini API
     try {
-        const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: messagesWithContext })
+        const response = await ai.models.generateContent({
+             model: "gemini-3-flash-preview",
+             contents: messagesWithContext.map(m => ({
+                 role: m.role === 'assistant' ? 'model' : 'user',
+                 parts: [{ text: m.content }]
+             })),
         });
-        const data = await res.json();
         
-        if (data.choices && data.choices.length > 0) {
-            setMessages([...newMessages, { role: 'assistant', content: data.choices[0].message.content }]);
-        } else if(data.error) {
-            setMessages([...newMessages, { role: 'assistant', content: `Error: ${data.error}${data.details ? ' - ' + data.details : ''}` }]);
+        if (response.text) {
+            setMessages([...newMessages, { role: 'assistant', content: response.text }]);
+        } else {
+            setMessages([...newMessages, { role: 'assistant', content: 'No response from AI' }]);
         }
     } catch (e) {
         console.error(e);
