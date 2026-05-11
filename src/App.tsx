@@ -8,6 +8,10 @@ import { Send, Upload, BookOpen, MessageSquare, LogIn, UserPlus, Copy, Database 
 import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set worker source for PDF parsing
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 enum OperationType {
   CREATE = 'create',
@@ -64,6 +68,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge'>('chat');
+  const [manualKnowledge, setManualKnowledge] = useState('');
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
@@ -180,11 +185,11 @@ export default function App() {
     }
   };
 
-  const saveToKnowledge = async (content: string) => {
+  const saveToKnowledge = async (filename: string, content: string) => {
     if (!user) return;
     try {
         await addDoc(collection(db, 'users', user.uid, 'knowledge'), {
-           filename: "Saved from chat " + new Date().toLocaleString(),
+           filename: filename,
            content: content,
            createdAt: new Date().toISOString()
         });
@@ -223,7 +228,7 @@ export default function App() {
                         <button onClick={() => navigator.clipboard.writeText(m.content)} className="p-1 text-gray-400 hover:text-black">
                         <Copy size={16} />
                         </button>
-                        <button onClick={() => saveToKnowledge(m.content)} className="p-1 text-gray-400 hover:text-black">
+                        <button onClick={() => saveToKnowledge("Saved from chat " + new Date().toLocaleString(), m.content)} className="p-1 text-gray-400 hover:text-black">
                         <Database size={16} />
                         </button>
                     </div>
@@ -248,48 +253,74 @@ export default function App() {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center text-gray-400">
-              <Upload size={32} />
+          <div className="flex flex-col items-center justify-center p-6 gap-6 text-center w-full max-w-2xl mx-auto">
+            <h2 className="text-2xl font-medium">Knowledge Base Editor</h2>
+            <textarea 
+                className="w-full h-64 p-4 rounded-xl border border-gray-200 outline-none"
+                placeholder="Paste text, scripts, or information here..."
+                value={manualKnowledge}
+                onChange={(e) => setManualKnowledge(e.target.value)}
+            />
+            <div className="flex gap-4">
+                <button 
+                  className="px-6 py-3 bg-black text-white rounded-full font-medium"
+                  onClick={async () => {
+                      if (!manualKnowledge.trim()) return;
+                      await saveToKnowledge("Manual Entry " + new Date().toLocaleString(), manualKnowledge);
+                      setManualKnowledge('');
+                  }}
+                >
+                  Save Text
+                </button>
+                <div className="text-gray-400 py-3">or</div>
+                <button 
+                  className="px-6 py-3 bg-white border border-gray-200 rounded-full font-medium"
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
+                  Upload File
+                </button>
             </div>
-            <h2 className="text-xl font-medium">Knowledge Base</h2>
-            <p className="text-gray-500 max-w-sm">Upload files or documents for the AI to analyze and learn from. Currently supporting TXT and Markdown.</p>
             <input 
               type="file" 
               id="file-upload" 
               className="hidden" 
-              accept=".txt,.md"
+              accept=".txt,.md,.pdf,.json"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        const content = e.target?.result as string;
-                        if(user) {
-                           try {
-                             await addDoc(collection(db, 'users', user.uid, 'knowledge'), {
-                               filename: file.name,
-                               content: content,
-                               createdAt: new Date().toISOString()
-                             });
-                             alert(`Successfully saved ${file.name}`);
-                           } catch (err) {
-                             handleFirestoreError(err, OperationType.CREATE, 'knowledge');
-                           }
+                if (!file || !user) return;
+                
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    let content = '';
+                    try {
+                        if (file.type === 'application/pdf') {
+                            const typedarray = new Uint8Array(e.target?.result as ArrayBuffer);
+                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                            for (let i = 1; i <= pdf.numPages; i++) {
+                                const page = await pdf.getPage(i);
+                                const textContent = await page.getTextContent();
+                                content += textContent.items.map((item: any) => item.str).join(' ');
+                            }
+                        } else if (file.type === 'application/json') {
+                            content = JSON.stringify(JSON.parse(e.target?.result as string));
                         } else {
-                            alert("Please sign in to upload files.");
+                            content = e.target?.result as string;
                         }
-                    };
+                        
+                        await saveToKnowledge(file.name, content);
+                    } catch (err) {
+                        alert("Error processing file.");
+                        console.error(err);
+                    }
+                };
+                
+                if (file.type === 'application/pdf') {
+                    reader.readAsArrayBuffer(file);
+                } else {
                     reader.readAsText(file);
                 }
               }}
             />
-            <button 
-              className="px-6 py-3 bg-black text-white rounded-full font-medium"
-              onClick={() => document.getElementById('file-upload')?.click()}
-            >
-              Upload File
-            </button>
           </div>
         )}
       </main>
