@@ -1,0 +1,6 @@
+{
+  "name": "AI Personal Assistant",
+  "description": "An AI-powered personal assistant connected to Firebase to help manage and learn from your data, with a minimalist iOS-inspired UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

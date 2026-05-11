@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["userId", "displayName", "email"]
+    },
+    "chatMessage": {
+      "title": "Chat Message",
+      "description": "A message in a chat history",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "assistant"] },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": "chatMessage",
+      "description": "Chat messages for a user"
+    }
+  }
+}
