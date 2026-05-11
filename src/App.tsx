@@ -113,12 +113,12 @@ export default function App() {
 
   if (!user) {
       return (
-        <div className="flex h-screen items-center justify-center bg-gray-50 p-4">
-            <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+        <div className="flex h-screen items-center justify-center bg-transparent p-4">
+            <div className="w-full max-w-sm bg-[#0f172a]/80 p-8 rounded-2xl shadow-lg border border-[#1e293b] flex flex-col gap-4 backdrop-blur-sm">
                 <h1 className="text-2xl font-bold text-center">{isLogin ? 'Sign In' : 'Sign Up'}</h1>
-                <input className="px-4 py-3 rounded-xl border" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-                <input className="px-4 py-3 rounded-xl border" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-                <button className="px-4 py-3 bg-black text-white rounded-xl font-medium" onClick={handleAuth}>{isLogin ? 'Sign In' : 'Sign Up'}</button>
+                <input className="px-4 py-3 rounded-xl border bg-transparent border-[#1e293b]" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+                <input className="px-4 py-3 rounded-xl border bg-transparent border-[#1e293b]" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+                <button className="px-4 py-3 bg-[#312e81] text-white rounded-xl font-medium" onClick={handleAuth}>{isLogin ? 'Sign In' : 'Sign Up'}</button>
                 <button className="text-sm text-gray-500 underline text-center" onClick={() => setIsLogin(!isLogin)}>{isLogin ? 'Need an account? Sign up' : 'Have an account? Sign in'}</button>
             </div>
         </div>
@@ -209,12 +209,12 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
-      <nav className="w-16 bg-white border-r flex flex-col items-center py-6 gap-6">
-        <button onClick={() => setActiveTab('chat')} className={`p-3 rounded-xl ${activeTab === 'chat' ? 'bg-black text-white' : 'text-gray-400'}`}>
+    <div className="flex h-screen bg-transparent font-sans text-slate-100">
+      <nav className="w-16 bg-[#0f172a]/60 border-r border-[#1e293b] backdrop-blur-sm flex flex-col items-center py-6 gap-6">
+        <button onClick={() => setActiveTab('chat')} className={`p-3 rounded-xl ${activeTab === 'chat' ? 'bg-[#312e81] text-white' : 'text-slate-400'}`}>
           <MessageSquare size={24} />
         </button>
-        <button onClick={() => setActiveTab('knowledge')} className={`p-3 rounded-xl ${activeTab === 'knowledge' ? 'bg-black text-white' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('knowledge')} className={`p-3 rounded-xl ${activeTab === 'knowledge' ? 'bg-[#312e81] text-white' : 'text-slate-400'}`}>
           <BookOpen size={24} />
         </button>
       </nav>
@@ -223,13 +223,13 @@ export default function App() {
         {activeTab === 'chat' ? (
           <>
             <header className="py-2 text-center text-sm font-semibold text-gray-500 uppercase tracking-widest">
-              Assistant
+              SpaceMind AI
             </header>
             
             <div className="flex-1 overflow-y-auto space-y-4 py-4">
               {messages.map((m, i) => (
                 <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
-                  <div className={`px-4 py-2 rounded-2xl max-w-[80%] ${m.role === 'user' ? 'bg-black text-white' : 'bg-white shadow-sm'}`}>
+                  <div className={`px-4 py-2 rounded-2xl max-w-[80%] ${m.role === 'user' ? 'bg-[#312e81] text-white' : 'bg-[#1e293b]/70 backdrop-blur-sm'}`}>
                     {m.content}
                   </div>
                   {m.role === 'assistant' && (
@@ -258,7 +258,7 @@ export default function App() {
               <button onClick={() => setMessages([])} className="p-3 text-gray-400 hover:text-black">
                 <Trash2 size={20} />
               </button>
-              <div className="flex bg-white rounded-full p-1 shadow-md border border-gray-100 flex-1">
+              <div className="flex bg-[#1e293b]/70 backdrop-blur-sm rounded-full p-1 shadow-md border border-[#334155] flex-1">
                 <input
                   className="flex-1 px-4 py-3 bg-transparent outline-none"
                   placeholder="Talk to your assistant..."
@@ -266,7 +266,7 @@ export default function App() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 />
-                <button onClick={sendMessage} className="p-3 bg-black text-white rounded-full">
+                <button onClick={sendMessage} className="p-3 bg-[#312e81] text-white rounded-full">
                   <Send size={20} />
                 </button>
               </div>
