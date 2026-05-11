@@ -48,7 +48,7 @@ export default function App() {
         if (data.choices && data.choices.length > 0) {
             setMessages([...newMessages, { role: 'assistant', content: data.choices[0].message.content }]);
         } else if(data.error) {
-            setMessages([...newMessages, { role: 'assistant', content: `Error: ${data.error}` }]);
+            setMessages([...newMessages, { role: 'assistant', content: `Error: ${data.error}${data.details ? ' - ' + data.details : ''}` }]);
         }
     } catch (e) {
         console.error(e);
