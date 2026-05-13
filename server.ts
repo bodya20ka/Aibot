@@ -12,13 +12,20 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
+
+  app.use((req, res, next) => {
+    console.log(`Received ${req.method} request to ${req.url}`);
+    next();
+  });
 
   // API route for AI interaction
-  app.post("/api/chat", async (req, res) => {
+  app.post("/chat", async (req, res) => {
+    console.log("Received POST /chat request");
     const { messages } = req.body;
     const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
+      console.error("NVIDIA_API_KEY missing");
       return res.status(500).json({ error: "NVIDIA_API_KEY not configured" });
     }
     
@@ -33,7 +40,7 @@ async function startServer() {
                 model: "meta/llama-3.3-70b-instruct",
                 messages,
                 temperature: 0.7,
-                max_tokens: 1024,
+                max_tokens: 4096,
             })
         });
         if (!response.ok) {

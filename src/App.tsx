@@ -146,12 +146,12 @@ export default function App() {
     if (user) {
         let querySnapshot;
         try {
-            // Limit query to 5 most recent documents directly
+            // Limit query to 25 most recent documents directly
             querySnapshot = await getDocs(
                 query(                
                     collection(db, 'users', user.uid, 'knowledge'),
                     orderBy('createdAt', 'desc'),
-                    limit(5)
+                    limit(25)
                 )
             );
         } catch (error) {
@@ -163,12 +163,12 @@ export default function App() {
                 const content = data.content || "";
                 
                 // Truncate more aggressively
-                const truncatedContent = content.length > 400 ? content.substring(0, 400) + "... (truncated)" : content;
+                const truncatedContent = content.length > 600 ? content.substring(0, 600) + "... (truncated)" : content;
                 knowledgeContext += `\nDocument: ${data.filename || 'unknown'}\nContent:\n${truncatedContent}\n`;
             });
             // Total cap for entire knowledge context
-            if (knowledgeContext.length > 2500) {
-                knowledgeContext = knowledgeContext.substring(0, 2500) + "... (total context truncated)";
+            if (knowledgeContext.length > 8000) {
+                knowledgeContext = knowledgeContext.substring(0, 8000) + "... (total context truncated)";
             }
         }
     }
@@ -183,7 +183,7 @@ export default function App() {
 
     // Fetch from backend
     try {
-        const res = await fetch('/api/chat', {
+        const res = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messages: messagesWithContext })
