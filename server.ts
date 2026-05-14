@@ -22,12 +22,18 @@ async function startServer() {
   // API route for AI interaction
   app.post("/chat", async (req, res) => {
     console.log("Received POST /chat request");
-    const { messages } = req.body;
+    const { messages, modelType } = req.body;
     const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
       console.error("NVIDIA_API_KEY missing");
       return res.status(500).json({ error: "NVIDIA_API_KEY not configured" });
     }
+    
+    const modelMapping: { [key: string]: string } = {
+        think: "meta/llama-3.3-70b-instruct",
+        fast: "openai/gpt-oss-20b"
+    };
+    const model = modelMapping[modelType as string] || modelMapping.think;
     
     try {
         const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
@@ -37,9 +43,9 @@ async function startServer() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "meta/llama-3.3-70b-instruct",
+                model: model,
                 messages,
-                temperature: 0.7,
+                temperature: modelType === 'fast' ? 1 : 0.7,
                 max_tokens: 4096,
             })
         });

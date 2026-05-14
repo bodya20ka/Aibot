@@ -68,6 +68,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge'>('chat');
+  const [model, setModel] = useState<'think' | 'fast'>('think');
   const [manualKnowledge, setManualKnowledge] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [clearedAt, setClearedAt] = useState<number>(0);
@@ -189,7 +190,7 @@ export default function App() {
         const res = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: messagesWithContext })
+            body: JSON.stringify({ messages: messagesWithContext, modelType: model })
         });
         
         if (!res.ok) {
@@ -297,21 +298,27 @@ export default function App() {
               <div ref={scrollRef} />
             </div>
 
-            <div className="sticky bottom-0 pt-2 flex items-center gap-2">
-              <button onClick={() => setClearedAt(Date.now())} className="p-3 text-gray-400 hover:text-black">
-                <Trash2 size={20} />
-              </button>
-              <div className="flex bg-[#1e293b]/70 backdrop-blur-sm rounded-full p-1 shadow-md border border-[#334155] flex-1">
-                <input
-                  className="flex-1 px-4 py-3 bg-transparent outline-none"
-                  placeholder="Talk to your assistant..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                />
-                <button onClick={sendMessage} className="p-3 bg-[#312e81] text-white rounded-full">
-                  <Send size={20} />
-                </button>
+            <div className="sticky bottom-0 pt-2 flex flex-col gap-2">
+              <div className="flex items-center gap-1 justify-center">
+                  <button onClick={() => setModel('think')} className={`px-3 py-1 rounded-full text-xs font-medium ${model === 'think' ? 'bg-[#312e81] text-white' : 'bg-[#1e293b] text-gray-400'}`}>think</button>
+                  <button onClick={() => setModel('fast')} className={`px-3 py-1 rounded-full text-xs font-medium ${model === 'fast' ? 'bg-[#312e81] text-white' : 'bg-[#1e293b] text-gray-400'}`}>fast</button>
+              </div>
+              <div className="flex items-center gap-2">
+                  <button onClick={() => setClearedAt(Date.now())} className="p-3 text-gray-400 hover:text-black">
+                    <Trash2 size={20} />
+                  </button>
+                  <div className="flex bg-[#1e293b]/70 backdrop-blur-sm rounded-full p-1 shadow-md border border-[#334155] flex-1">
+                    <input
+                      className="flex-1 px-4 py-3 bg-transparent outline-none"
+                      placeholder="Talk to your assistant..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                    />
+                    <button onClick={sendMessage} className="p-3 bg-[#312e81] text-white rounded-full">
+                      <Send size={20} />
+                    </button>
+                  </div>
               </div>
             </div>
           </>
