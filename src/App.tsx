@@ -70,6 +70,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge'>('chat');
   const [manualKnowledge, setManualKnowledge] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const [clearedAt, setClearedAt] = useState<number>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,17 +88,19 @@ export default function App() {
         orderBy('createdAt')
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        const loadedMessages = snapshot.docs.map(doc => ({
-          role: doc.data().role,
-          content: doc.data().content
-        }));
+        const loadedMessages = snapshot.docs
+          .filter(doc => new Date(doc.data().createdAt).getTime() > clearedAt)
+          .map(doc => ({
+            role: doc.data().role,
+            content: doc.data().content
+          }));
         setMessages(loadedMessages);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'chat'));
       return () => unsubscribe();
     } else {
       setMessages([]);
     }
-  }, [user]);
+  }, [user, clearedAt]);
 
   const handleAuth = async () => {
     try {
@@ -295,7 +298,7 @@ export default function App() {
             </div>
 
             <div className="sticky bottom-0 pt-2 flex items-center gap-2">
-              <button onClick={() => setMessages([])} className="p-3 text-gray-400 hover:text-black">
+              <button onClick={() => setClearedAt(Date.now())} className="p-3 text-gray-400 hover:text-black">
                 <Trash2 size={20} />
               </button>
               <div className="flex bg-[#1e293b]/70 backdrop-blur-sm rounded-full p-1 shadow-md border border-[#334155] flex-1">
